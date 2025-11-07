@@ -344,21 +344,11 @@ impl From<OsdpCommandOutput> for libosdp_sys::osdp_cmd_output {
 /// will expect the PD to be in this state moving forward.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OsdpComSet {
-    address: u8,
-    baud_rate: u32,
-}
-
-impl OsdpComSet {
-    /// Create an instance of OsdpComSet command
-    ///
-    /// # Arguments
-    ///
-    /// * `address` - address to which this PD will respond after this command
-    /// * `baud_rate` - Serial communication speed; only acceptable values are,
-    ///   9600/19200/38400/57600/115200/230400
-    pub fn new(address: u8, baud_rate: u32) -> Self {
-        Self { address, baud_rate }
-    }
+    /// Unit ID to which this PD will respond after the change takes effect.
+    pub address: u8,
+    /// Baud rate.
+    /// Valid values: 9600, 19200, 38400, 115200, 230400.
+    pub baud_rate: u32,
 }
 
 impl From<libosdp_sys::osdp_cmd_comset> for OsdpComSet {
@@ -517,10 +507,13 @@ pub enum OsdpCommand {
     /// Command to control digital output exposed by the PD
     Output(OsdpCommandOutput),
 
-    /// Command to set the communication parameters for the PD. The effects
-    /// of this command is expected to be be stored in PD’s non-volatile memory
-    /// as the CP will expect the PD to be in this state moving forward
+    /// Command to request setting the communication parameters for the PD.
     ComSet(OsdpComSet),
+
+    /// Set communication parameter completed.
+    /// The effects of this command is expected to be be stored in PD’s non-volatile
+    /// memory as the CP will expect the PD to be in this state moving forward
+    ComSetDone(OsdpComSet),
 
     /// Command to set secure channel keys to the PD
     KeySet(OsdpCommandKeyset),
@@ -560,6 +553,10 @@ impl From<OsdpCommand> for libosdp_sys::osdp_cmd {
             },
             OsdpCommand::ComSet(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET,
+                __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { comset: c.into() },
+            },
+            OsdpCommand::ComSetDone(c) => libosdp_sys::osdp_cmd {
+                id: libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET_DONE,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { comset: c.into() },
             },
             OsdpCommand::KeySet(c) => libosdp_sys::osdp_cmd {
@@ -603,6 +600,9 @@ impl From<libosdp_sys::osdp_cmd> for OsdpCommand {
             }
             libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET => {
                 OsdpCommand::ComSet(unsafe { value.__bindgen_anon_1.comset.into() })
+            }
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET_DONE => {
+                OsdpCommand::ComSetDone(unsafe { value.__bindgen_anon_1.comset.into() })
             }
             libosdp_sys::osdp_cmd_e_OSDP_CMD_KEYSET => {
                 OsdpCommand::KeySet(unsafe { value.__bindgen_anon_1.keyset.into() })
