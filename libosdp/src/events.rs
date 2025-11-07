@@ -25,14 +25,11 @@ use defmt::panic;
 #[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub enum OsdpCardFormats {
     /// Card format is not specified
+    #[default]
     Unspecified,
 
     /// Wiegand format
     Wiegand,
-
-    /// Ascii format
-    #[default]
-    Ascii,
 }
 
 impl From<libosdp_sys::osdp_event_cardread_format_e> for OsdpCardFormats {
@@ -44,7 +41,6 @@ impl From<libosdp_sys::osdp_event_cardread_format_e> for OsdpCardFormats {
             libosdp_sys::osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_WIEGAND => {
                 OsdpCardFormats::Wiegand
             }
-            libosdp_sys::osdp_event_cardread_format_e_OSDP_CARD_FMT_ASCII => OsdpCardFormats::Ascii,
             _ => panic!("Unknown osdp card format"),
         }
     }
@@ -59,7 +55,6 @@ impl From<OsdpCardFormats> for libosdp_sys::osdp_event_cardread_format_e {
             OsdpCardFormats::Wiegand => {
                 libosdp_sys::osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_WIEGAND
             }
-            OsdpCardFormats::Ascii => libosdp_sys::osdp_event_cardread_format_e_OSDP_CARD_FMT_ASCII,
         }
     }
 }
@@ -96,13 +91,13 @@ pub struct OsdpEventCardRead {
 }
 
 impl OsdpEventCardRead {
-    /// Create an ASCII card read event for self and direction set to forward
-    pub fn new_ascii(data: Vec<u8>) -> Self {
+    /// Create an raw data card read event for self and direction set to forward
+    pub fn new_raw(data: Vec<u8>) -> Self {
         Self {
             reader_no: 0,
-            format: OsdpCardFormats::Ascii,
+            format: OsdpCardFormats::Unspecified,
             direction: false,
-            nr_bits: 0,
+            nr_bits: data.len() * 8,
             data,
         }
     }
@@ -127,10 +122,7 @@ impl From<libosdp_sys::osdp_event_cardread> for OsdpEventCardRead {
         let direction = value.direction == 1;
         let format = value.format.into();
         let len = value.length as usize;
-        let (nr_bits, nr_bytes) = match format {
-            OsdpCardFormats::Ascii => (0, len),
-            _ => (len, len.div_ceil(8)),
-        };
+        let (nr_bits, nr_bytes) = (len, len.div_ceil(8));
         let data = value.data[0..nr_bytes].to_vec();
         OsdpEventCardRead {
             reader_no: value.reader_no,
@@ -145,10 +137,7 @@ impl From<libosdp_sys::osdp_event_cardread> for OsdpEventCardRead {
 impl From<OsdpEventCardRead> for libosdp_sys::osdp_event_cardread {
     fn from(value: OsdpEventCardRead) -> Self {
         let mut data = [0; libosdp_sys::OSDP_EVENT_CARDREAD_MAX_DATALEN as usize];
-        let length = match value.format {
-            OsdpCardFormats::Ascii => value.data.len() as i32,
-            _ => value.nr_bits as i32,
-        };
+        let length = value.nr_bits as i32;
         data[..value.data.len()].copy_from_slice(&value.data[..]);
         libosdp_sys::osdp_event_cardread {
             reader_no: value.reader_no,
@@ -424,20 +413,20 @@ impl From<libosdp_sys::osdp_event> for OsdpEvent {
 mod tests {
     use super::OsdpEventCardRead;
     use libosdp_sys::{
-        osdp_event_cardread, osdp_event_cardread_format_e_OSDP_CARD_FMT_ASCII,
+        osdp_event_cardread, osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_UNSPECIFIED,
         osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_WIEGAND,
     };
 
     #[test]
     fn test_event_cardread() {
-        let event = OsdpEventCardRead::new_ascii(vec![0x55, 0xAA]);
+        let event = OsdpEventCardRead::new_raw(vec![0x55, 0xAA]);
         let event_struct: osdp_event_cardread = event.clone().into();
 
-        assert_eq!(event_struct.length, 2);
+        assert_eq!(event_struct.length, 2 * 8);
         assert_eq!(event_struct.direction, 0);
         assert_eq!(
             event_struct.format,
-            osdp_event_cardread_format_e_OSDP_CARD_FMT_ASCII
+            osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_UNSPECIFIED
         );
         assert_eq!(event_struct.data[0], 0x55);
         assert_eq!(event_struct.data[1], 0xAA);

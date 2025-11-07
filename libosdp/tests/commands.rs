@@ -59,7 +59,7 @@ fn test_commands() -> Result<()> {
     let cmd_rx = pd.receiver.recv().unwrap();
     assert_eq!(cmd_rx, command, "Buzzer command check failed");
 
-    let event = OsdpEvent::CardRead(OsdpEventCardRead::new_ascii(vec![0x55, 0xAA]));
+    let event = OsdpEvent::CardRead(OsdpEventCardRead::new_raw(vec![0x55, 0xAA]));
     notify_event(pd.get_device(), event.clone())?;
     assert_eq!(
         cp.receiver.recv().unwrap(),
