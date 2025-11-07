@@ -365,24 +365,28 @@ impl From<OsdpEvent> for libosdp_sys::osdp_event {
         match value {
             OsdpEvent::CardRead(e) => libosdp_sys::osdp_event {
                 type_: libosdp_sys::osdp_event_type_OSDP_EVENT_CARDREAD,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 {
                     cardread: e.clone().into(),
                 },
             },
             OsdpEvent::KeyPress(e) => libosdp_sys::osdp_event {
                 type_: libosdp_sys::osdp_event_type_OSDP_EVENT_KEYPRESS,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 {
                     keypress: e.clone().into(),
                 },
             },
             OsdpEvent::MfgReply(e) => libosdp_sys::osdp_event {
                 type_: libosdp_sys::osdp_event_type_OSDP_EVENT_MFGREP,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 {
                     mfgrep: e.clone().into(),
                 },
             },
             OsdpEvent::Status(e) => libosdp_sys::osdp_event {
                 type_: libosdp_sys::osdp_event_type_OSDP_EVENT_STATUS,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 { status: e.into() },
             },
         }
