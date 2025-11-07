@@ -418,9 +418,6 @@ pub struct OsdpCommandMfg {
     /// 3-byte IEEE assigned OUI used as vendor code
     pub vendor_code: (u8, u8, u8),
 
-    /// 1-byte manufacturer defined command ID
-    pub command: u8,
-
     /// Command data (if any)
     pub data: Vec<u8>,
 }
@@ -433,7 +430,6 @@ impl From<libosdp_sys::osdp_cmd_mfg> for OsdpCommandMfg {
         let vendor_code: (u8, u8, u8) = (bytes[0], bytes[1], bytes[2]);
         OsdpCommandMfg {
             vendor_code,
-            command: value.command,
             data,
         }
     }
@@ -445,7 +441,6 @@ impl From<OsdpCommandMfg> for libosdp_sys::osdp_cmd_mfg {
         data[..value.data.len()].copy_from_slice(&value.data[..]);
         libosdp_sys::osdp_cmd_mfg {
             vendor_code: value.vendor_code.as_le(),
-            command: value.command,
             length: value.data.len() as u8,
             data,
         }
@@ -630,13 +625,11 @@ mod tests {
     fn test_command_mfg() {
         let cmd = OsdpCommandMfg {
             vendor_code: (0x05, 0x07, 0x09),
-            command: 0x47,
             data: vec![0x55, 0xAA],
         };
         let cmd_struct: osdp_cmd_mfg = cmd.clone().into();
 
         assert_eq!(cmd_struct.vendor_code, 0x90705);
-        assert_eq!(cmd_struct.command, 0x47);
         assert_eq!(cmd_struct.length, 2);
         assert_eq!(cmd_struct.data[0], 0x55);
         assert_eq!(cmd_struct.data[1], 0xAA);

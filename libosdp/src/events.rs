@@ -213,9 +213,6 @@ pub struct OsdpEventMfgReply {
     /// 3-byte IEEE assigned OUI used as vendor code
     pub vendor_code: (u8, u8, u8),
 
-    /// 1-byte reply code
-    pub reply: u8,
-
     /// Reply data (if any)
     pub data: Vec<u8>,
 }
@@ -228,7 +225,6 @@ impl From<libosdp_sys::osdp_event_mfgrep> for OsdpEventMfgReply {
         let vendor_code: (u8, u8, u8) = (bytes[0], bytes[1], bytes[2]);
         OsdpEventMfgReply {
             vendor_code,
-            reply: value.command,
             data,
         }
     }
@@ -240,7 +236,6 @@ impl From<OsdpEventMfgReply> for libosdp_sys::osdp_event_mfgrep {
         data[..value.data.len()].copy_from_slice(&value.data[..]);
         libosdp_sys::osdp_event_mfgrep {
             vendor_code: value.vendor_code.as_le(),
-            command: value.reply,
             length: value.data.len() as u8,
             data,
         }
