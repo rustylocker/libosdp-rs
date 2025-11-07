@@ -50,18 +50,23 @@ unsafe extern "C" fn log_handler(
     }
 }
 
-extern "C" fn trampoline<F>(data: *mut c_void, cmd: *mut libosdp_sys::osdp_cmd) -> i32
+extern "C" fn trampoline<F>(data_ptr: *mut c_void, cmd_ptr: *mut libosdp_sys::osdp_cmd) -> i32
 where
-    F: FnMut(OsdpCommand) -> i32,
+    F: FnMut(&mut OsdpCommand) -> i32,
 {
-    let cmd: OsdpCommand = unsafe { (*cmd).into() };
-    let callback: &mut F = unsafe { &mut *(data as *mut F) };
-    callback(cmd)
+    let mut cmd: OsdpCommand = unsafe { cmd_ptr.read().into() };
+    let callback: &mut F = unsafe { &mut *(data_ptr as *mut F) };
+    let res = callback(&mut cmd);
+    // TODO: Free data_ptr's box?
+    unsafe {
+        cmd_ptr.write(cmd.into());
+    }
+    res
 }
 
 fn get_trampoline<F>(_closure: &F) -> CommandCallback
 where
-    F: FnMut(OsdpCommand) -> i32,
+    F: FnMut(&mut OsdpCommand) -> i32,
 {
     trampoline::<F>
 }
@@ -131,7 +136,7 @@ impl PeripheralDevice {
     /// CP.
     pub fn set_command_callback<F>(&mut self, closure: F)
     where
-        F: FnMut(OsdpCommand) -> i32,
+        F: FnMut(&mut OsdpCommand) -> i32,
     {
         unsafe {
             let callback = get_trampoline(&closure);

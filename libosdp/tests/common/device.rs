@@ -94,7 +94,7 @@ impl PdDevice {
         let mut pd = PeripheralDevice::new(pd_info, bus)?;
         let (cmd_tx, cmd_rx) = std::sync::mpsc::channel::<OsdpCommand>();
         pd.set_command_callback(|command| {
-            cmd_tx.send(command).unwrap();
+            cmd_tx.send(command.clone()).unwrap();
             0
         });
 
@@ -106,7 +106,7 @@ impl PdDevice {
                 let dev = dev_clone;
                 let sender = cmd_tx;
                 dev.lock().unwrap().set_command_callback(|command| {
-                    sender.send(command).expect("PD command send");
+                    sender.send(command.clone()).expect("PD command send");
                     0
                 });
                 loop {
