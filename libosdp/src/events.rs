@@ -287,7 +287,7 @@ impl From<OsdpStatusReportType> for libosdp_sys::osdp_status_report_type {
 /// Event to describe various status changes on PD
 ///
 /// This event is used by the PD to indicate status such as input, output,
-/// tamper, etc.,. up to a maximum of 32 status bits can be reported. The values
+/// tamper, etc.,. up to a maximum of 64 status bits can be reported. The values
 /// of the least significant N bit of status are considered, where N is the
 /// number of items as described in the corresponding capability codes,
 /// - PdCapability::OutputControl
@@ -295,29 +295,13 @@ impl From<OsdpStatusReportType> for libosdp_sys::osdp_status_report_type {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub struct OsdpStatusReport {
-    type_: OsdpStatusReportType,
-    nr_entries: usize,
-    mask: u32,
-}
-
-impl OsdpStatusReport {
-    /// Create an input event with given bit mask
-    pub fn new_input(nr_entries: usize, mask: u32) -> Self {
-        Self {
-            type_: OsdpStatusReportType::Input,
-            nr_entries,
-            mask,
-        }
-    }
-
-    /// Create an output event with given bit mask
-    pub fn new_output(nr_entries: usize, mask: u32) -> Self {
-        Self {
-            type_: OsdpStatusReportType::Output,
-            nr_entries,
-            mask,
-        }
-    }
+    /// The kind of event to report see `enum osdp_event_status_type_e`
+    pub type_: OsdpStatusReportType,
+    /// Number of valid entries in `report`
+    pub nr_entries: usize,
+    /// Status report
+    #[serde(with = "serde_arrays")]
+    pub report: [u8; 64],
 }
 
 impl From<libosdp_sys::osdp_status_report> for OsdpStatusReport {
@@ -325,7 +309,7 @@ impl From<libosdp_sys::osdp_status_report> for OsdpStatusReport {
         OsdpStatusReport {
             type_: value.type_.into(),
             nr_entries: value.nr_entries as usize,
-            mask: value.mask,
+            report: value.report,
         }
     }
 }
@@ -335,7 +319,7 @@ impl From<OsdpStatusReport> for libosdp_sys::osdp_status_report {
         libosdp_sys::osdp_status_report {
             type_: value.type_.into(),
             nr_entries: value.nr_entries as i32,
-            mask: value.mask,
+            report: value.report,
         }
     }
 }

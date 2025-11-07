@@ -18,6 +18,7 @@ embedded-io = { version = "0.6.1", features = ["alloc"] }
 libosdp-sys = { version = "3.1.0", path = "../libosdp-sys" }
 log = { version = "0.4.20", optional = true }
 serde = { version = "1.0.192", features = ["derive", "alloc"], default-features = false }
+serde_arrays = "0.2.0"
 thiserror = { version = "1.0.50", optional = true }
 defmt = { version = "0.3", optional = true, features = ["alloc"] }
 itoa = "1.0.11"
