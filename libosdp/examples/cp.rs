@@ -35,6 +35,11 @@ impl Channel for OsdpChannel {
         // TODO: flush device
         Ok(())
     }
+
+    fn close(&mut self) -> Result<(), ChannelError> {
+        // TODO: close device
+        Ok(())
+    }
 }
 
 fn main() -> Result<(), OsdpError> {
