@@ -447,24 +447,19 @@ impl From<OsdpCommandMfg> for libosdp_sys::osdp_cmd_mfg {
     }
 }
 
+/// File transfer command flag used to cancel ongoing transfers (not sent on OSDP channel).
+pub const OSDP_CMD_FILE_TX_FLAG_CANCEL: u32 = 1 << 31;
+
 /// Command to kick-off a file transfer to the PD.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OsdpCommandFileTx {
-    id: i32,
-    flags: u32,
-}
-
-impl OsdpCommandFileTx {
-    /// Create an instance of OsdpCommandFileTx.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The ID of the file; these are pre-shared between the CP and PD
-    /// * `flags` - Reserved and set to zero by OSDP spec; bit-31 used by
-    ///   libOSDP to cancel ongoing transfers (it is not sent on OSDP channel)
-    pub fn new(id: i32, flags: u32) -> Self {
-        Self { id, flags }
-    }
+    /// Pre-agreed file ID between CP and PD
+    pub id: i32,
+    /// Reserved and set to zero by OSDP spec.
+    /// Note that the upper bits are used by libosdp internally (IOW, not sent
+    /// over the OSDP bus). Currently the following flags are defined:
+    /// - OSDP_CMD_FILE_TX_FLAG_CANCEL
+    pub flags: u32,
 }
 
 impl From<libosdp_sys::osdp_cmd_file_tx> for OsdpCommandFileTx {
