@@ -54,7 +54,14 @@ fn test_commands() -> Result<()> {
         thread::sleep(time::Duration::from_secs(1));
     }
 
-    let command = OsdpCommand::Buzzer(OsdpCommandBuzzer::default());
+    let data = OsdpCommandBuzzer {
+        reader: 0,
+        control_code: 1,
+        on_count: 0,
+        off_count: 0,
+        rep_count: 0,
+    };
+    let command = OsdpCommand::Buzzer(data);
     send_command(cp.get_device(), command.clone())?;
     let cmd_rx = pd.receiver.recv().unwrap();
     assert_eq!(cmd_rx, command, "Buzzer command check failed");

@@ -175,7 +175,7 @@ impl From<OsdpCommandLed> for libosdp_sys::osdp_cmd_led {
 }
 
 /// Command to control the behavior of a buzzer in the PD
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OsdpCommandBuzzer {
     /// Reader (another device connected to this PD) for which this command is
     /// issued for.
