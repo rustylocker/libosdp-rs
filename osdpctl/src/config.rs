@@ -71,7 +71,7 @@ impl KeyStore {
         s
     }
 
-    pub fn load(&self) -> Result<[u8; 16]> {
+    pub fn _load(&self) -> Result<[u8; 16]> {
         let s = std::fs::read_to_string(&self.store)
             .context(format!("keystore {} not found", self.store.display()))?;
         KeyStore::str_to_key(&s)
