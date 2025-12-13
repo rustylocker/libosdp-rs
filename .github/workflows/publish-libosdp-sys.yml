@@ -27,7 +27,6 @@ jobs:
     - uses: actions-rust-lang/setup-rust-toolchain@v1.9.0
       with:
         toolchain: stable
-        override: true
     - run: cargo build -p libosdp-sys
 
   publish:
@@ -41,7 +40,6 @@ jobs:
     - uses: actions-rust-lang/setup-rust-toolchain@v1.9.0
       with:
         toolchain: stable
-        override: true
     - name: Check semver
       continue-on-error: true
       uses: obi1kenobi/cargo-semver-checks-action@v2
