@@ -69,6 +69,9 @@ pub trait Channel: Send {
     /// Flush this output stream, ensuring that all intermediately buffered
     /// contents reach their destination.
     fn flush(&mut self) -> Result<(), ChannelError>;
+
+    /// Close this output stream
+    fn close(&mut self) -> Result<(), ChannelError>;
 }
 
 impl core::fmt::Debug for dyn Channel {
@@ -112,6 +115,12 @@ unsafe extern "C" fn raw_flush(data: *mut c_void) {
     let _ = channel.as_mut().flush();
 }
 
+unsafe extern "C" fn raw_close(data: *mut c_void) {
+    let channel: *mut Box<dyn Channel> = data as *mut _;
+    let channel = channel.as_mut().unwrap();
+    let _ = channel.as_mut().close();
+}
+
 impl From<Box<dyn Channel>> for libosdp_sys::osdp_channel {
     fn from(val: Box<dyn Channel>) -> Self {
         let id = val.get_id();
@@ -122,6 +131,7 @@ impl From<Box<dyn Channel>> for libosdp_sys::osdp_channel {
             recv: Some(raw_read),
             send: Some(raw_write),
             flush: Some(raw_flush),
+            close: Some(raw_close),
         }
     }
 }

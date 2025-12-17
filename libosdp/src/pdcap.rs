@@ -135,6 +135,17 @@ pub enum PdCapability {
     /// This capability indicates the ability of the reader to handle biometric
     /// input.
     Biometrics(PdCapEntity),
+
+    /// This capability indicates if the reader is capable of supporting
+    /// Secure Pin Entry (SPE) for smart cards
+    SecurePinEntry(PdCapEntity),
+
+    /// This capability indicates the version of OSDP the PD supports
+    /// Compliance Levels:
+    ///   0 - Unspecified
+    ///   1 - IEC 60839-11-5
+    ///   2 - SIA OSDP 2.2
+    OsdpVersion(PdCapEntity),
 }
 
 #[rustfmt::skip]
@@ -185,6 +196,12 @@ impl FromStr for PdCapability {
                 },
                 "Biometrics" => {
                     Ok(PdCapability::Biometrics(PdCapEntity::from_str(ent)?))
+                },
+                "SecurePinEntry" => {
+                    Ok(PdCapability::SecurePinEntry(PdCapEntity::from_str(ent)?))
+                },
+                "OsdpVersion" => {
+                    Ok(PdCapability::OsdpVersion(PdCapEntity::from_str(ent)?))
                 },
                 _ => Err(OsdpError::Parse(format!("PdCapability: {s}"))),
             }
@@ -244,6 +261,12 @@ impl From<libosdp_sys::osdp_pd_cap> for PdCapability {
             libosdp_sys::osdp_pd_cap_function_code_e_OSDP_PD_CAP_BIOMETRICS => {
                 PdCapability::Biometrics(e)
             }
+            libosdp_sys::osdp_pd_cap_function_code_e_OSDP_PD_CAP_SECURE_PIN_ENTRY => {
+                PdCapability::SecurePinEntry(e)
+            }
+            libosdp_sys::osdp_pd_cap_function_code_e_OSDP_PD_CAP_OSDP_VERSION => {
+                PdCapability::OsdpVersion(e)
+            }
             _ => panic!("Unknown function code"),
         }
     }
@@ -294,6 +317,12 @@ impl From<PdCapability> for u8 {
             }
             PdCapability::Biometrics(_) => {
                 libosdp_sys::osdp_pd_cap_function_code_e_OSDP_PD_CAP_BIOMETRICS as u8
+            }
+            PdCapability::SecurePinEntry(_) => {
+                libosdp_sys::osdp_pd_cap_function_code_e_OSDP_PD_CAP_SECURE_PIN_ENTRY as u8
+            }
+            PdCapability::OsdpVersion(_) => {
+                libosdp_sys::osdp_pd_cap_function_code_e_OSDP_PD_CAP_OSDP_VERSION as u8
             }
         }
     }
@@ -369,6 +398,16 @@ impl From<PdCapability> for libosdp_sys::osdp_pd_cap {
                 num_items: e.num_items,
             },
             PdCapability::Biometrics(e) => libosdp_sys::osdp_pd_cap {
+                function_code,
+                compliance_level: e.compliance,
+                num_items: e.num_items,
+            },
+            PdCapability::SecurePinEntry(e) => libosdp_sys::osdp_pd_cap {
+                function_code,
+                compliance_level: e.compliance,
+                num_items: e.num_items,
+            },
+            PdCapability::OsdpVersion(e) => libosdp_sys::osdp_pd_cap {
                 function_code,
                 compliance_level: e.compliance,
                 num_items: e.num_items,

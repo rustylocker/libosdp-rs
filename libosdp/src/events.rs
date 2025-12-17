@@ -25,14 +25,11 @@ use defmt::panic;
 #[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub enum OsdpCardFormats {
     /// Card format is not specified
+    #[default]
     Unspecified,
 
     /// Wiegand format
     Wiegand,
-
-    /// Ascii format
-    #[default]
-    Ascii,
 }
 
 impl From<libosdp_sys::osdp_event_cardread_format_e> for OsdpCardFormats {
@@ -44,7 +41,6 @@ impl From<libosdp_sys::osdp_event_cardread_format_e> for OsdpCardFormats {
             libosdp_sys::osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_WIEGAND => {
                 OsdpCardFormats::Wiegand
             }
-            libosdp_sys::osdp_event_cardread_format_e_OSDP_CARD_FMT_ASCII => OsdpCardFormats::Ascii,
             _ => panic!("Unknown osdp card format"),
         }
     }
@@ -59,7 +55,6 @@ impl From<OsdpCardFormats> for libosdp_sys::osdp_event_cardread_format_e {
             OsdpCardFormats::Wiegand => {
                 libosdp_sys::osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_WIEGAND
             }
-            OsdpCardFormats::Ascii => libosdp_sys::osdp_event_cardread_format_e_OSDP_CARD_FMT_ASCII,
         }
     }
 }
@@ -96,13 +91,13 @@ pub struct OsdpEventCardRead {
 }
 
 impl OsdpEventCardRead {
-    /// Create an ASCII card read event for self and direction set to forward
-    pub fn new_ascii(data: Vec<u8>) -> Self {
+    /// Create an raw data card read event for self and direction set to forward
+    pub fn new_raw(data: Vec<u8>) -> Self {
         Self {
             reader_no: 0,
-            format: OsdpCardFormats::Ascii,
+            format: OsdpCardFormats::Unspecified,
             direction: false,
-            nr_bits: 0,
+            nr_bits: data.len() * 8,
             data,
         }
     }
@@ -127,10 +122,7 @@ impl From<libosdp_sys::osdp_event_cardread> for OsdpEventCardRead {
         let direction = value.direction == 1;
         let format = value.format.into();
         let len = value.length as usize;
-        let (nr_bits, nr_bytes) = match format {
-            OsdpCardFormats::Ascii => (0, len),
-            _ => (len, len.div_ceil(8)),
-        };
+        let (nr_bits, nr_bytes) = (len, len.div_ceil(8));
         let data = value.data[0..nr_bytes].to_vec();
         OsdpEventCardRead {
             reader_no: value.reader_no,
@@ -145,10 +137,7 @@ impl From<libosdp_sys::osdp_event_cardread> for OsdpEventCardRead {
 impl From<OsdpEventCardRead> for libosdp_sys::osdp_event_cardread {
     fn from(value: OsdpEventCardRead) -> Self {
         let mut data = [0; libosdp_sys::OSDP_EVENT_CARDREAD_MAX_DATALEN as usize];
-        let length = match value.format {
-            OsdpCardFormats::Ascii => value.data.len() as i32,
-            _ => value.nr_bits as i32,
-        };
+        let length = value.nr_bits as i32;
         data[..value.data.len()].copy_from_slice(&value.data[..]);
         libosdp_sys::osdp_event_cardread {
             reader_no: value.reader_no,
@@ -213,9 +202,6 @@ pub struct OsdpEventMfgReply {
     /// 3-byte IEEE assigned OUI used as vendor code
     pub vendor_code: (u8, u8, u8),
 
-    /// 1-byte reply code
-    pub reply: u8,
-
     /// Reply data (if any)
     pub data: Vec<u8>,
 }
@@ -228,7 +214,6 @@ impl From<libosdp_sys::osdp_event_mfgrep> for OsdpEventMfgReply {
         let vendor_code: (u8, u8, u8) = (bytes[0], bytes[1], bytes[2]);
         OsdpEventMfgReply {
             vendor_code,
-            reply: value.command,
             data,
         }
     }
@@ -240,7 +225,6 @@ impl From<OsdpEventMfgReply> for libosdp_sys::osdp_event_mfgrep {
         data[..value.data.len()].copy_from_slice(&value.data[..]);
         libosdp_sys::osdp_event_mfgrep {
             vendor_code: value.vendor_code.as_le(),
-            command: value.reply,
             length: value.data.len() as u8,
             data,
         }
@@ -303,7 +287,7 @@ impl From<OsdpStatusReportType> for libosdp_sys::osdp_status_report_type {
 /// Event to describe various status changes on PD
 ///
 /// This event is used by the PD to indicate status such as input, output,
-/// tamper, etc.,. up to a maximum of 32 status bits can be reported. The values
+/// tamper, etc.,. up to a maximum of 64 status bits can be reported. The values
 /// of the least significant N bit of status are considered, where N is the
 /// number of items as described in the corresponding capability codes,
 /// - PdCapability::OutputControl
@@ -311,29 +295,13 @@ impl From<OsdpStatusReportType> for libosdp_sys::osdp_status_report_type {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub struct OsdpStatusReport {
-    type_: OsdpStatusReportType,
-    nr_entries: usize,
-    mask: u32,
-}
-
-impl OsdpStatusReport {
-    /// Create an input event with given bit mask
-    pub fn new_input(nr_entries: usize, mask: u32) -> Self {
-        Self {
-            type_: OsdpStatusReportType::Input,
-            nr_entries,
-            mask,
-        }
-    }
-
-    /// Create an output event with given bit mask
-    pub fn new_output(nr_entries: usize, mask: u32) -> Self {
-        Self {
-            type_: OsdpStatusReportType::Output,
-            nr_entries,
-            mask,
-        }
-    }
+    /// The kind of event to report see `enum osdp_event_status_type_e`
+    pub type_: OsdpStatusReportType,
+    /// Number of valid entries in `report`
+    pub nr_entries: usize,
+    /// Status report
+    #[serde(with = "serde_arrays")]
+    pub report: [u8; 64],
 }
 
 impl From<libosdp_sys::osdp_status_report> for OsdpStatusReport {
@@ -341,7 +309,7 @@ impl From<libosdp_sys::osdp_status_report> for OsdpStatusReport {
         OsdpStatusReport {
             type_: value.type_.into(),
             nr_entries: value.nr_entries as usize,
-            mask: value.mask,
+            report: value.report,
         }
     }
 }
@@ -351,7 +319,7 @@ impl From<OsdpStatusReport> for libosdp_sys::osdp_status_report {
         libosdp_sys::osdp_status_report {
             type_: value.type_.into(),
             nr_entries: value.nr_entries as i32,
-            mask: value.mask,
+            report: value.report,
         }
     }
 }
@@ -381,24 +349,28 @@ impl From<OsdpEvent> for libosdp_sys::osdp_event {
         match value {
             OsdpEvent::CardRead(e) => libosdp_sys::osdp_event {
                 type_: libosdp_sys::osdp_event_type_OSDP_EVENT_CARDREAD,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 {
                     cardread: e.clone().into(),
                 },
             },
             OsdpEvent::KeyPress(e) => libosdp_sys::osdp_event {
                 type_: libosdp_sys::osdp_event_type_OSDP_EVENT_KEYPRESS,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 {
                     keypress: e.clone().into(),
                 },
             },
             OsdpEvent::MfgReply(e) => libosdp_sys::osdp_event {
                 type_: libosdp_sys::osdp_event_type_OSDP_EVENT_MFGREP,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 {
                     mfgrep: e.clone().into(),
                 },
             },
             OsdpEvent::Status(e) => libosdp_sys::osdp_event {
                 type_: libosdp_sys::osdp_event_type_OSDP_EVENT_STATUS,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 { status: e.into() },
             },
         }
@@ -429,20 +401,20 @@ impl From<libosdp_sys::osdp_event> for OsdpEvent {
 mod tests {
     use super::OsdpEventCardRead;
     use libosdp_sys::{
-        osdp_event_cardread, osdp_event_cardread_format_e_OSDP_CARD_FMT_ASCII,
+        osdp_event_cardread, osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_UNSPECIFIED,
         osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_WIEGAND,
     };
 
     #[test]
     fn test_event_cardread() {
-        let event = OsdpEventCardRead::new_ascii(vec![0x55, 0xAA]);
+        let event = OsdpEventCardRead::new_raw(vec![0x55, 0xAA]);
         let event_struct: osdp_event_cardread = event.clone().into();
 
-        assert_eq!(event_struct.length, 2);
+        assert_eq!(event_struct.length, 2 * 8);
         assert_eq!(event_struct.direction, 0);
         assert_eq!(
             event_struct.format,
-            osdp_event_cardread_format_e_OSDP_CARD_FMT_ASCII
+            osdp_event_cardread_format_e_OSDP_CARD_FMT_RAW_UNSPECIFIED
         );
         assert_eq!(event_struct.data[0], 0x55);
         assert_eq!(event_struct.data[1], 0xAA);

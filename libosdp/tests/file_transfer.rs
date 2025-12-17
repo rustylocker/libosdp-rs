@@ -143,7 +143,7 @@ fn test_file_transfer() -> Result<()> {
 
     pd.get_device().register_file_ops(Box::new(fm))?;
 
-    let command = OsdpCommand::FileTx(OsdpCommandFileTx::new(1, 0));
+    let command = OsdpCommand::FileTx(OsdpCommandFileTx {id: 1, flags: 0});
     cp.get_device().send_command(0, command.clone())?;
 
     assert_eq!(

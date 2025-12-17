@@ -180,8 +180,8 @@ impl PdConfig {
             .unwrap()
             .unwrap() as u32;
         let pd_id = PdId {
-            version: config.getuint("pd_id", "version").unwrap().unwrap() as i32,
-            model: config.getuint("pd_id", "model").unwrap().unwrap() as i32,
+            version: config.getuint("pd_id", "version").unwrap().unwrap() as u8,
+            model: config.getuint("pd_id", "model").unwrap().unwrap() as u8,
             vendor_code: (
                 vendor_code as u8,
                 (vendor_code >> 8) as u8,
