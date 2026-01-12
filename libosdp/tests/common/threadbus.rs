@@ -94,4 +94,8 @@ impl libosdp::Channel for ThreadBus {
     fn flush(&mut self) -> Result<(), libosdp::ChannelError> {
         Ok(())
     }
+
+    fn close(&mut self) -> Result<(), libosdp::ChannelError> {
+        Ok(())
+    }
 }

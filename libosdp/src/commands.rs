@@ -175,7 +175,7 @@ impl From<OsdpCommandLed> for libosdp_sys::osdp_cmd_led {
 }
 
 /// Command to control the behavior of a buzzer in the PD
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OsdpCommandBuzzer {
     /// Reader (another device connected to this PD) for which this command is
     /// issued for.
@@ -344,21 +344,11 @@ impl From<OsdpCommandOutput> for libosdp_sys::osdp_cmd_output {
 /// will expect the PD to be in this state moving forward.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OsdpComSet {
-    address: u8,
-    baud_rate: u32,
-}
-
-impl OsdpComSet {
-    /// Create an instance of OsdpComSet command
-    ///
-    /// # Arguments
-    ///
-    /// * `address` - address to which this PD will respond after this command
-    /// * `baud_rate` - Serial communication speed; only acceptable values are,
-    ///   9600/19200/38400/57600/115200/230400
-    pub fn new(address: u8, baud_rate: u32) -> Self {
-        Self { address, baud_rate }
-    }
+    /// Unit ID to which this PD will respond after the change takes effect.
+    pub address: u8,
+    /// Baud rate.
+    /// Valid values: 9600, 19200, 38400, 115200, 230400.
+    pub baud_rate: u32,
 }
 
 impl From<libosdp_sys::osdp_cmd_comset> for OsdpComSet {
@@ -428,9 +418,6 @@ pub struct OsdpCommandMfg {
     /// 3-byte IEEE assigned OUI used as vendor code
     pub vendor_code: (u8, u8, u8),
 
-    /// 1-byte manufacturer defined command ID
-    pub command: u8,
-
     /// Command data (if any)
     pub data: Vec<u8>,
 }
@@ -443,7 +430,6 @@ impl From<libosdp_sys::osdp_cmd_mfg> for OsdpCommandMfg {
         let vendor_code: (u8, u8, u8) = (bytes[0], bytes[1], bytes[2]);
         OsdpCommandMfg {
             vendor_code,
-            command: value.command,
             data,
         }
     }
@@ -455,31 +441,25 @@ impl From<OsdpCommandMfg> for libosdp_sys::osdp_cmd_mfg {
         data[..value.data.len()].copy_from_slice(&value.data[..]);
         libosdp_sys::osdp_cmd_mfg {
             vendor_code: value.vendor_code.as_le(),
-            command: value.command,
             length: value.data.len() as u8,
             data,
         }
     }
 }
 
+/// File transfer command flag used to cancel ongoing transfers (not sent on OSDP channel).
+pub const OSDP_CMD_FILE_TX_FLAG_CANCEL: u32 = 1 << 31;
+
 /// Command to kick-off a file transfer to the PD.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OsdpCommandFileTx {
-    id: i32,
-    flags: u32,
-}
-
-impl OsdpCommandFileTx {
-    /// Create an instance of OsdpCommandFileTx.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The ID of the file; these are pre-shared between the CP and PD
-    /// * `flags` - Reserved and set to zero by OSDP spec; bit-31 used by
-    ///   libOSDP to cancel ongoing transfers (it is not sent on OSDP channel)
-    pub fn new(id: i32, flags: u32) -> Self {
-        Self { id, flags }
-    }
+    /// Pre-agreed file ID between CP and PD
+    pub id: i32,
+    /// Reserved and set to zero by OSDP spec.
+    /// Note that the upper bits are used by libosdp internally (IOW, not sent
+    /// over the OSDP bus). Currently the following flags are defined:
+    /// - OSDP_CMD_FILE_TX_FLAG_CANCEL
+    pub flags: u32,
 }
 
 impl From<libosdp_sys::osdp_cmd_file_tx> for OsdpCommandFileTx {
@@ -517,10 +497,13 @@ pub enum OsdpCommand {
     /// Command to control digital output exposed by the PD
     Output(OsdpCommandOutput),
 
-    /// Command to set the communication parameters for the PD. The effects
-    /// of this command is expected to be be stored in PD’s non-volatile memory
-    /// as the CP will expect the PD to be in this state moving forward
+    /// Command to request setting the communication parameters for the PD.
     ComSet(OsdpComSet),
+
+    /// Set communication parameter completed.
+    /// The effects of this command is expected to be be stored in PD’s non-volatile
+    /// memory as the CP will expect the PD to be in this state moving forward
+    ComSetDone(OsdpComSet),
 
     /// Command to set secure channel keys to the PD
     KeySet(OsdpCommandKeyset),
@@ -540,46 +523,60 @@ impl From<OsdpCommand> for libosdp_sys::osdp_cmd {
         match value {
             OsdpCommand::Led(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_LED,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 {
                     led: c.clone().into(),
                 },
             },
             OsdpCommand::Buzzer(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_BUZZER,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { buzzer: c.into() },
             },
             OsdpCommand::Text(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_TEXT,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 {
                     text: c.clone().into(),
                 },
             },
             OsdpCommand::Output(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_OUTPUT,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { output: c.into() },
             },
             OsdpCommand::ComSet(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET,
+                flags: 0,
+                __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { comset: c.into() },
+            },
+            OsdpCommand::ComSetDone(c) => libosdp_sys::osdp_cmd {
+                id: libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET_DONE,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { comset: c.into() },
             },
             OsdpCommand::KeySet(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_KEYSET,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 {
                     keyset: c.clone().into(),
                 },
             },
             OsdpCommand::Mfg(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_MFG,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 {
                     mfg: c.clone().into(),
                 },
             },
             OsdpCommand::FileTx(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_FILE_TX,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { file_tx: c.into() },
             },
             OsdpCommand::Status(c) => libosdp_sys::osdp_cmd {
                 id: libosdp_sys::osdp_cmd_e_OSDP_CMD_STATUS,
+                flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { status: c.into() },
             },
         }
@@ -603,6 +600,9 @@ impl From<libosdp_sys::osdp_cmd> for OsdpCommand {
             }
             libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET => {
                 OsdpCommand::ComSet(unsafe { value.__bindgen_anon_1.comset.into() })
+            }
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET_DONE => {
+                OsdpCommand::ComSetDone(unsafe { value.__bindgen_anon_1.comset.into() })
             }
             libosdp_sys::osdp_cmd_e_OSDP_CMD_KEYSET => {
                 OsdpCommand::KeySet(unsafe { value.__bindgen_anon_1.keyset.into() })
@@ -630,13 +630,11 @@ mod tests {
     fn test_command_mfg() {
         let cmd = OsdpCommandMfg {
             vendor_code: (0x05, 0x07, 0x09),
-            command: 0x47,
             data: vec![0x55, 0xAA],
         };
         let cmd_struct: osdp_cmd_mfg = cmd.clone().into();
 
         assert_eq!(cmd_struct.vendor_code, 0x90705);
-        assert_eq!(cmd_struct.command, 0x47);
         assert_eq!(cmd_struct.length, 2);
         assert_eq!(cmd_struct.data[0], 0x55);
         assert_eq!(cmd_struct.data[1], 0xAA);

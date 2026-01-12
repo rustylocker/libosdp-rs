@@ -48,6 +48,9 @@ pub fn main(mut dev: PdConfig, daemonize: bool) -> Result<()> {
             OsdpCommand::ComSet(c) => {
                 log::info!("Command: {:?}", c);
             }
+            OsdpCommand::ComSetDone(c) => {
+                log::info!("Command: {:?}", c);
+            }
             OsdpCommand::KeySet(c) => {
                 log::info!("Command: {:?}", c);
                 let mut key = [0; 16];

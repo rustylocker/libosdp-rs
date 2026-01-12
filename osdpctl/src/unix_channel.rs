@@ -86,4 +86,8 @@ impl libosdp::Channel for UnixChannel {
     fn flush(&mut self) -> std::prelude::v1::Result<(), libosdp::ChannelError> {
         self.stream.flush().map_err(ChannelError::from)
     }
+
+    fn close(&mut self) -> std::prelude::v1::Result<(), libosdp::ChannelError> {
+        Ok(())
+    }
 }

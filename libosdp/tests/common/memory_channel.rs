@@ -64,4 +64,8 @@ impl libosdp::Channel for MemoryChannel {
     fn flush(&mut self) -> Result<(), libosdp::ChannelError> {
         Ok(())
     }
+
+    fn close(&mut self) -> Result<(), ChannelError> {
+        Ok(())
+    }
 }

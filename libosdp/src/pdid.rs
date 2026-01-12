@@ -9,9 +9,9 @@ use super::ConvertEndian;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PdId {
     /// 1-Byte Manufacturer's version number
-    pub version: i32,
+    pub version: u8,
     /// 1-byte Manufacturer's model number
-    pub model: i32,
+    pub model: u8,
     /// 3-bytes IEEE assigned OUI
     pub vendor_code: (u8, u8, u8),
     /// 4-byte serial number for the PD
@@ -43,8 +43,8 @@ impl From<libosdp_sys::osdp_pd_id> for PdId {
         let bytes = value.firmware_version.to_le_bytes();
         let firmware_version = (bytes[0], bytes[1], bytes[2]);
         Self {
-            version: value.version,
-            model: value.model,
+            version: u8::try_from(value.version).unwrap_or(0),
+            model: u8::try_from(value.model).unwrap_or(0),
             vendor_code,
             serial_number: value.serial_number.to_be_bytes(),
             firmware_version,
@@ -81,8 +81,8 @@ impl ConvertEndian for (u8, u8, u8) {
 impl From<PdId> for libosdp_sys::osdp_pd_id {
     fn from(value: PdId) -> Self {
         libosdp_sys::osdp_pd_id {
-            version: value.version,
-            model: value.model,
+            version: value.version as i32,
+            model: value.model as i32,
             vendor_code: value.vendor_code.as_le(),
             serial_number: value.serial_number.as_le(),
             firmware_version: value.firmware_version.as_le(),
