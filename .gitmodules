@@ -1,4 +1,4 @@
 [submodule "vendor"]
 	path = libosdp-sys/vendor
-  url = https://github.com/goToMain/libosdp
-  branch = master
+	url = https://github.com/rustylocker/libosdp
+	branch = tl-devel
