@@ -3,8 +3,7 @@
 pub const _STDINT_H: u32 = 1;
 pub const _FEATURES_H: u32 = 1;
 pub const _DEFAULT_SOURCE: u32 = 1;
-pub const __GLIBC_USE_ISOC2Y: u32 = 0;
-pub const __GLIBC_USE_ISOC23: u32 = 0;
+pub const __GLIBC_USE_ISOC2X: u32 = 0;
 pub const __USE_ISOC11: u32 = 1;
 pub const __USE_ISOC99: u32 = 1;
 pub const __USE_ISOC95: u32 = 1;
@@ -22,13 +21,12 @@ pub const __WORDSIZE: u32 = 64;
 pub const __WORDSIZE_TIME64_COMPAT32: u32 = 1;
 pub const __SYSCALL_WORDSIZE: u32 = 64;
 pub const __TIMESIZE: u32 = 64;
-pub const __USE_TIME_BITS64: u32 = 1;
 pub const __USE_MISC: u32 = 1;
 pub const __USE_ATFILE: u32 = 1;
 pub const __USE_FORTIFY_LEVEL: u32 = 0;
 pub const __GLIBC_USE_DEPRECATED_GETS: u32 = 0;
 pub const __GLIBC_USE_DEPRECATED_SCANF: u32 = 0;
-pub const __GLIBC_USE_C23_STRTOL: u32 = 0;
+pub const __GLIBC_USE_C2X_STRTOL: u32 = 0;
 pub const _STDC_PREDEF_H: u32 = 1;
 pub const __STDC_IEC_559__: u32 = 1;
 pub const __STDC_IEC_60559_BFP__: u32 = 201404;
@@ -37,17 +35,17 @@ pub const __STDC_IEC_60559_COMPLEX__: u32 = 201404;
 pub const __STDC_ISO_10646__: u32 = 201706;
 pub const __GNU_LIBRARY__: u32 = 6;
 pub const __GLIBC__: u32 = 2;
-pub const __GLIBC_MINOR__: u32 = 41;
+pub const __GLIBC_MINOR__: u32 = 39;
 pub const _SYS_CDEFS_H: u32 = 1;
 pub const __glibc_c99_flexarr_available: u32 = 1;
 pub const __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI: u32 = 0;
 pub const __HAVE_GENERIC_SELECTION: u32 = 1;
 pub const __GLIBC_USE_LIB_EXT2: u32 = 0;
 pub const __GLIBC_USE_IEC_60559_BFP_EXT: u32 = 0;
-pub const __GLIBC_USE_IEC_60559_BFP_EXT_C23: u32 = 0;
+pub const __GLIBC_USE_IEC_60559_BFP_EXT_C2X: u32 = 0;
 pub const __GLIBC_USE_IEC_60559_EXT: u32 = 0;
 pub const __GLIBC_USE_IEC_60559_FUNCS_EXT: u32 = 0;
-pub const __GLIBC_USE_IEC_60559_FUNCS_EXT_C23: u32 = 0;
+pub const __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X: u32 = 0;
 pub const __GLIBC_USE_IEC_60559_TYPES_EXT: u32 = 0;
 pub const _BITS_TYPES_H: u32 = 1;
 pub const _BITS_TYPESIZES_H: u32 = 1;
@@ -112,11 +110,16 @@ pub const OSDP_STATUS_REPORT_MAX_LEN: u32 = 64;
 pub const OSDP_CMD_TEXT_MAX_LEN: u32 = 32;
 pub const OSDP_CMD_KEYSET_KEY_MAX_LEN: u32 = 32;
 pub const OSDP_CMD_MFG_MAX_DATALEN: u32 = 64;
+pub const OSDP_CMD_XWR_APDU_MAX_LEN: u32 = 255;
 pub const OSDP_CMD_FILE_TX_FLAG_CANCEL: u32 = 2147483648;
 pub const OSDP_CMD_FLAG_BROADCAST: u32 = 1;
 pub const OSDP_EVENT_CARDREAD_MAX_DATALEN: u32 = 64;
 pub const OSDP_EVENT_KEYPRESS_MAX_DATALEN: u32 = 64;
 pub const OSDP_EVENT_MFGREP_MAX_DATALEN: u32 = 128;
+pub const OSDP_EVENT_EXTREAD_MAX_DATALEN: u32 = 128;
+pub const OSDP_EVENT_XRD_CSN_MAX_DATALEN: u32 = 32;
+pub const OSDP_EVENT_XRD_PROTOCOL_MAX_LEN: u32 = 128;
+pub const OSDP_EVENT_XRD_APDU_MAX_DATALEN: u32 = 255;
 pub type __u_char = ::core::ffi::c_uchar;
 pub type __u_short = ::core::ffi::c_ushort;
 pub type __u_int = ::core::ffi::c_uint;
@@ -533,6 +536,97 @@ pub struct osdp_cmd_file_tx {
     #[doc = " Reserved and set to zero by OSDP spec.\n\n @note: The upper bits are used by libosdp internally (IOW, not sent\n over the OSDP bus). Currently the following flags are defined:\n\n - @ref OSDP_CMD_FILE_TX_FLAG_CANCEL"]
     pub flags: u32,
 }
+#[doc = " Extended READ/WRITE Command Mode-00 - Mode Set\n\n Set and configure the background behaviour mode."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xwr_mode_set {
+    #[doc = " Extended READ/WRITE background operation mode code"]
+    pub mode_code: u8,
+    #[doc = " Mode configuration (optional in request command)\n\n - 0x00 - Disable (used if absent)\n - 0x01 - Enable the Mode 0 Extended Read Card Info Report Response"]
+    pub mode_config: u8,
+}
+#[doc = " Extended READ/WRITE Command Mode-01 - Transparent Content Send Request Data\n\n The embedded APDU shall be passed to the specified reader."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xwr_transp_send {
+    #[doc = " Reader number. 0 = First Reader, 1 = Second Reader, etc."]
+    pub reader: u8,
+    #[doc = " Valid APDU to send to the smart card"]
+    pub apdu: [u8; 255usize],
+    #[doc = " Length of the APDU data (internal use)"]
+    pub length: u8,
+}
+#[doc = " Extended READ/WRITE Command Mode-01 - Connection Done\n\n Instruct the PD (reader) to disconnect from the smart card."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xwr_sc_disconnect {
+    #[doc = " Reader number. 0 = First Reader, 1 = Second Reader, etc."]
+    pub reader: u8,
+}
+#[doc = " Extended READ/WRITE Command Mode-01 - Request Secure PIN Entry\n\n Instruct the PD (reader) to perform a local Secure PIN Entry (SPE) sequence\n with the smart card. It also includes an APDU for the smart card.\n When the reader receives this packet, it autonomously prompts the user for\n their PIN, inserts the PIN into the APDU and sends it to the smart card.\n The reader should restore the display to its previous state when done\n processing the user input.\n While processing this message, the reader should not add any keys to the\n keypad buffer."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xwr_secure_pin {
+    #[doc = " Reader number. 0 = First Reader, 1 = Second Reader, etc."]
+    pub reader: u8,
+    #[doc = " Timeout in seconds (0x00 means use default timeout)"]
+    pub timeout: u8,
+    #[doc = " Timeout in seconds after first key stroke"]
+    pub timeout2: u8,
+    #[doc = " Formatting USB_CCID_PIN_FORMAT_xxx"]
+    pub format_string: u8,
+    #[doc = " PIN block string\n\n Bits 3-0 - PIN block size in bytes after justification and formatting.\n Bits 7-4 - Bit size of PIN length in APDU."]
+    pub pin_block_string: u8,
+    #[doc = " Bit length format\n\n Bits 3-0 - PIN length position in system units\n Bits 7-5 - Reserved for future use, bit 4 set if system units are bytes\n            clear if system units are bits."]
+    pub pin_len_format: u8,
+    #[doc = " PIN maximum extra digit\n\n XXYY, where XX is minimum PIN size in digits, YY is maximum."]
+    pub pin_max_extra_digit: u16,
+    #[doc = " Conditions under which PIN entry should be considered complete"]
+    pub entry_validation_condition: u8,
+    #[doc = " Number of verification messages to display for PIN"]
+    pub number_message: u8,
+    #[doc = " Language for messages"]
+    pub language_id: u16,
+    #[doc = " Message index"]
+    pub msg_index: u8,
+    #[doc = " T=1 I-block prologue field to use (fill with 0x00)"]
+    pub teo_prologue: u32,
+    #[doc = " Length of APDU to be sent to the smart card"]
+    pub apdu_length: u32,
+    #[doc = " APDU data to send to the smart card"]
+    pub apdu: [u8; 255usize],
+}
+#[doc = " @brief Extended READ/WRITE Mode-01 - Smartcard Scan\n\n Identify if a smart card is present at the reader."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xwr_sc_scan {
+    #[doc = " Reader number. 0 = First Reader, 1 = Second Reader, etc."]
+    pub reader: u8,
+}
+#[doc = " @brief Extended READ/WRITE Command\n\n This command implements extended write mode to facilitate communications\n with an ISO 7816-4 based credential."]
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct osdp_cmd_xwrite {
+    #[doc = " Extended READ/WRITE mode:\n - 0x00 - No specific behavior mode in effect.\n          osdp_XWR commands support the read back and the setting of the\n          PD’s behaviour mode.\n - 0x01 - Transparent smart card interface support.\n          This behaviour mode supports transparent operations between the\n          ACU and a smart card."]
+    pub mode: u8,
+    #[doc = " Mode dependent command code\n\n Mode 0:\n - 0x02 - En-/Disable the specified mode\n\n Mode 1:\n - 0x01 - Pass the APDU embedded in this command to the specified reader\n - 0x02 - Notifies the designated reader to terminate its connection to\n          the smart card\n - 0x03 - Instructs the designated reader to perform “Secure PIN Entry”\n - 0x04 - Instructs the designated reader to perform a smart card Scan"]
+    pub command: u8,
+    pub __bindgen_anon_1: osdp_cmd_xwrite__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union osdp_cmd_xwrite__bindgen_ty_1 {
+    #[doc = "< Mode 0 - Cmd 2"]
+    pub mode_set: osdp_xwr_mode_set,
+    #[doc = "< Mode 1 - Cmd 1"]
+    pub transp_send: osdp_xwr_transp_send,
+    #[doc = "< Mode 1 - Cmd 2"]
+    pub sc_disco: osdp_xwr_sc_disconnect,
+    #[doc = "< Mode 1 - Cmd 3"]
+    pub secure_pin: osdp_xwr_secure_pin,
+    #[doc = "< Mode 1 - Cmd 4"]
+    pub sc_scan: osdp_xwr_sc_scan,
+}
 #[doc = "< Output control command"]
 pub const osdp_cmd_e_OSDP_CMD_OUTPUT: osdp_cmd_e = 1;
 #[doc = "< Reader LED control command"]
@@ -553,8 +647,10 @@ pub const osdp_cmd_e_OSDP_CMD_FILE_TX: osdp_cmd_e = 8;
 pub const osdp_cmd_e_OSDP_CMD_STATUS: osdp_cmd_e = 9;
 #[doc = "< Comset completed; Alias for OSDP_CMD_COMSET"]
 pub const osdp_cmd_e_OSDP_CMD_COMSET_DONE: osdp_cmd_e = 10;
+#[doc = "< Extended write command"]
+pub const osdp_cmd_e_OSDP_CMD_XWRITE: osdp_cmd_e = 11;
 #[doc = "< Max command value"]
-pub const osdp_cmd_e_OSDP_CMD_SENTINEL: osdp_cmd_e = 11;
+pub const osdp_cmd_e_OSDP_CMD_SENTINEL: osdp_cmd_e = 12;
 #[doc = " @brief OSDP application exposed commands"]
 pub type osdp_cmd_e = ::core::ffi::c_uchar;
 #[doc = " @brief Queue linkage node; layout-compatible with node_t from list.h.\n Embedded as @c _node in osdp_cmd and osdp_event. Do not read or write this\n field — it is reserved for internal use by the library."]
@@ -597,6 +693,8 @@ pub union osdp_cmd__bindgen_ty_1 {
     pub mfg: osdp_cmd_mfg,
     #[doc = "< File transfer command structure"]
     pub file_tx: osdp_cmd_file_tx,
+    #[doc = "< Extended write command structure"]
+    pub xwrite: osdp_cmd_xwrite,
     #[doc = "< Status report command structure"]
     pub status: osdp_status_report,
 }
@@ -670,6 +768,91 @@ pub struct osdp_event_notification {
     #[doc = "< Additional data member"]
     pub arg1: ::core::ffi::c_int,
 }
+#[doc = " Extended READ/WRITE Reply - Error\n\n This may be sent as a poll response, or in response to any Mode -00 command\n (osdp_XWR|XRD_MODE=0|XWR_PCMND=any) to return an error or negative\n acknowledge (NAK) condition."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xrd_error_reply {
+    #[doc = " Various transparent mode error conditions."]
+    pub error_code: u8,
+}
+#[doc = " Extended READ/WRITE Reply - Mode setting report\n\n This reply is sent in response to osdp_XWR|XRD_MODE=0|XWR_PCMND=2\n and it returns its current background behaviour mode setting and\n configuration in response to the request."]
+pub type osdp_xrd_mode_report = osdp_xwr_mode_set;
+#[doc = " Extended READ/WRITE Reply - Card information report\n\n When enabled, this reply is sent in response to an osdp_POLL command after\n a smart card is detected that may require additional processing in an\n alternate mode."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xrd_card_report {
+    #[doc = " Reader Number"]
+    pub reader: u8,
+    #[doc = " Card Protocol\n\n - 0x00 - Contact T0/T1\n - 0x01 - ISO 14443 A/B\n - 0x02 - Reserved for future use"]
+    pub protocol: u8,
+    #[doc = " Byte size of the Card Serial Number (0 = no Data)"]
+    pub csn_length: u8,
+    #[doc = " Card Serial Number"]
+    pub csn: [u8; 32usize],
+    #[doc = " Protocol Data\n\n - Protocol 0: ATR\n - Protocol 1: ATS/ATQB"]
+    pub data: [u8; 128usize],
+    #[doc = " Length of the protocol data (internal use)"]
+    pub length: u8,
+}
+#[doc = " Extended READ/WRITE Reply - Card Present Notification\n\n This reply is sent in response to n osdp_PR01SCSCAN indicating the resulting\n smart card connection status or sent in response to an osdp_POLL"]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xrd_card_present {
+    #[doc = " Reader Number"]
+    pub reader: u8,
+    #[doc = " Smart Card Present Status\n\n - 0x00 - Card not present.\n - 0x01 - Card present but interface not specified.\n - 0x02 - Card present on contactless interface.\n - 0x03 - Card present on contact interface.\n - 0x04 - Reserved for future use."]
+    pub status: u8,
+}
+#[doc = " Extended READ/WRITE Reply - Transparent Card Data\n\n This reply is sent in response to a XWR_PCMND Code 0x01 “XMIT” reporting a\n data packet received from a smart card by a reader set to operate in\n background Mode = 1."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xrd_card_data {
+    #[doc = " Reader Number"]
+    pub reader: u8,
+    #[doc = " Results of requested command"]
+    pub status: u8,
+    #[doc = " APDU data from the smart card"]
+    pub apdu: [u8; 255usize],
+    #[doc = " Length of the APDU data (internal use)"]
+    pub apdu_length: u8,
+}
+#[doc = " Extended READ/WRITE Reply - Secure PIN Entry Complete\n\n This reply is sent in response to an XWR_PCMND Code 0x03 “Secure PIN Entry”\n indicating that a Secure Pin Entry (SPE) sequence has completed.\n This reply is used by smart card readers set to operate in background\n Mode = 1."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct osdp_xrd_pin_complete {
+    #[doc = " Reader Number"]
+    pub reader: u8,
+    #[doc = " Results of the SPE sequence"]
+    pub status: u8,
+    #[doc = " Number of attempts before card \"locks\" itself"]
+    pub tries: u8,
+}
+#[doc = " @brief OSDP Extended READ/WRITE Reply"]
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct osdp_event_xread {
+    #[doc = " Extended READ/WRITE mode:\n - 0x00 - No specific behavior mode in effect.\n - 0x01 - Transparent smart card interface support."]
+    pub mode: u8,
+    #[doc = " Extended write mode dependent reply code.\n\n Mode 0:\n - 0x00 - General error indication: PD was unable to process the command.\n - 0x01 - Returns the current extended write mode in effect.\n - 0x02 - Returns a card information report when a smart card is detected.\n\n Mode 1:\n - 0x00 - General error indication: PD was unable to process the command.\n - 0x01 - Card present notification.\n - 0x02 - Transparent card data.\n - 0x03 - Secure PIN entry complete.\n - 0x04 - Reserved for future use."]
+    pub reply: u8,
+    pub __bindgen_anon_1: osdp_event_xread__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union osdp_event_xread__bindgen_ty_1 {
+    #[doc = "< Mode * - Reply 0x00"]
+    pub error_reply: osdp_xrd_error_reply,
+    #[doc = "< Mode 0 - Reply 0x01"]
+    pub mode_report: osdp_xrd_mode_report,
+    #[doc = "< Mode 0 - Reply 0x02"]
+    pub card_report: osdp_xrd_card_report,
+    #[doc = "< Mode 1 - Reply 0x01"]
+    pub card_present: osdp_xrd_card_present,
+    #[doc = "< Mode 1 - Reply 0x02"]
+    pub card_data: osdp_xrd_card_data,
+    #[doc = "< Mode 1 - Reply 0x03"]
+    pub pin_complete: osdp_xrd_pin_complete,
+}
 #[doc = "< Card read event"]
 pub const osdp_event_type_OSDP_EVENT_CARDREAD: osdp_event_type = 1;
 #[doc = "< Keypad press event"]
@@ -680,8 +863,10 @@ pub const osdp_event_type_OSDP_EVENT_MFGREP: osdp_event_type = 3;
 pub const osdp_event_type_OSDP_EVENT_STATUS: osdp_event_type = 4;
 #[doc = "< LibOSDP notification event"]
 pub const osdp_event_type_OSDP_EVENT_NOTIFICATION: osdp_event_type = 5;
+#[doc = "< Extended read event"]
+pub const osdp_event_type_OSDP_EVENT_XREAD: osdp_event_type = 6;
 #[doc = "< Max event value"]
-pub const osdp_event_type_OSDP_EVENT_SENTINEL: osdp_event_type = 6;
+pub const osdp_event_type_OSDP_EVENT_SENTINEL: osdp_event_type = 7;
 #[doc = " @brief OSDP PD Events"]
 pub type osdp_event_type = ::core::ffi::c_uchar;
 #[doc = " @brief OSDP Event structure."]
@@ -710,6 +895,8 @@ pub union osdp_event__bindgen_ty_1 {
     pub status: osdp_status_report,
     #[doc = "< Notification event structure"]
     pub notif: osdp_event_notification,
+    #[doc = "< Extended read event structure"]
+    pub xread: osdp_event_xread,
 }
 #[doc = " @brief Callback for PD command notifications. After it has been registered\n with `osdp_pd_set_command_callback`, this method is invoked when the PD\n receives a command from the CP.\n\n @param arg pointer that will was passed to the arg param of\n `osdp_pd_set_command_callback`.\n @param cmd pointer to the received command.\n\n @retval 0 if LibOSDP must send a `osdp_ACK` response\n @retval -ve if LibOSDP must send a `osdp_NAK` response\n @retval +ve and modify the passed `struct osdp_cmd *cmd` if LibOSDP must\n send a specific response. This is useful for sending manufacturer specific\n reply `osdp_MFGREP`."]
 pub type pd_command_callback_t = ::core::option::Option<

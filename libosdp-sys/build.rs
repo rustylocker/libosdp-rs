@@ -155,6 +155,7 @@ fn main() -> Result<()> {
         "vendor/src/osdp_phy.c",
         "vendor/src/osdp_sc.c",
         "vendor/src/osdp_file.c",
+        "vendor/src/osdp_xwr.c",
         "vendor/src/osdp_pd.c",
         "vendor/src/osdp_cp.c",
         "vendor/src/crypto/tinyaes_src.c",
