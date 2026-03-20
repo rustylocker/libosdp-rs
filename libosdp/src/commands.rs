@@ -435,10 +435,7 @@ impl From<libosdp_sys::osdp_cmd_mfg> for OsdpCommandMfg {
         let data = value.data[0..n].to_vec();
         let bytes = value.vendor_code.to_le_bytes();
         let vendor_code: (u8, u8, u8) = (bytes[0], bytes[1], bytes[2]);
-        OsdpCommandMfg {
-            vendor_code,
-            data,
-        }
+        OsdpCommandMfg { vendor_code, data }
     }
 }
 
@@ -487,6 +484,365 @@ impl From<OsdpCommandFileTx> for libosdp_sys::osdp_cmd_file_tx {
     }
 }
 
+/// Extended READ/WRITE Command Mode 0 - Mode Set
+///
+/// Set and configure the background behavior mode.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct OsdpCmdSetModeData {
+    /// Background operation mode code
+    pub mode_code: u8,
+    /// Mode configuration
+    pub mode_config: u8,
+}
+
+impl From<libosdp_sys::osdp_xwr_mode_set> for OsdpCmdSetModeData {
+    fn from(value: libosdp_sys::osdp_xwr_mode_set) -> Self {
+        Self {
+            mode_code: value.mode_code,
+            mode_config: value.mode_config,
+        }
+    }
+}
+
+impl From<OsdpCmdSetModeData> for libosdp_sys::osdp_xwr_mode_set {
+    fn from(value: OsdpCmdSetModeData) -> Self {
+        Self {
+            mode_code: value.mode_code,
+            mode_config: value.mode_config,
+        }
+    }
+}
+
+/// Extended READ/WRITE Command Mode 1 - Transparent Content Send Request Data
+///
+/// The embedded APDU shall be passed to the specified reader.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct OsdpCmdTransparentSendData {
+    /// Reader number
+    pub reader: u8,
+    /// Valid APDU to send to the smart card
+    pub apdu: Vec<u8>,
+}
+
+impl From<libosdp_sys::osdp_xwr_transp_send> for OsdpCmdTransparentSendData {
+    fn from(value: libosdp_sys::osdp_xwr_transp_send) -> Self {
+        let n = value.apdu_length as usize;
+        let apdu = value.apdu[0..n].to_vec();
+        Self {
+            reader: value.reader,
+            apdu,
+        }
+    }
+}
+
+impl From<OsdpCmdTransparentSendData> for libosdp_sys::osdp_xwr_transp_send {
+    fn from(value: OsdpCmdTransparentSendData) -> Self {
+        let mut apdu = [0; libosdp_sys::OSDP_CMD_XWR_APDU_MAX_LEN as usize];
+        apdu[..value.apdu.len()].copy_from_slice(&value.apdu[..]);
+        Self {
+            reader: value.reader,
+            apdu_length: value.apdu.len() as u8,
+            apdu,
+        }
+    }
+}
+
+/// Extended READ/WRITE Command Mode 1 - Connection Done
+///
+/// Instruct the PD (reader) to disconnect from the smart card.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct OsdpCmdCardScanData {
+    /// Reader number
+    pub reader: u8,
+}
+
+impl From<libosdp_sys::osdp_xwr_sc_scan> for OsdpCmdCardScanData {
+    fn from(value: libosdp_sys::osdp_xwr_sc_scan) -> Self {
+        Self {
+            reader: value.reader,
+        }
+    }
+}
+
+impl From<OsdpCmdCardScanData> for libosdp_sys::osdp_xwr_sc_scan {
+    fn from(value: OsdpCmdCardScanData) -> Self {
+        Self {
+            reader: value.reader,
+        }
+    }
+}
+
+/// Extended READ/WRITE Mode 1 - Smart Card Scan
+///
+/// Identify if a smart card is present at the reader.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct OsdpCmdCardDisconnectData {
+    /// Reader number
+    pub reader: u8,
+}
+
+impl From<libosdp_sys::osdp_xwr_sc_disconnect> for OsdpCmdCardDisconnectData {
+    fn from(value: libosdp_sys::osdp_xwr_sc_disconnect) -> Self {
+        Self {
+            reader: value.reader,
+        }
+    }
+}
+
+impl From<OsdpCmdCardDisconnectData> for libosdp_sys::osdp_xwr_sc_disconnect {
+    fn from(value: OsdpCmdCardDisconnectData) -> Self {
+        Self {
+            reader: value.reader,
+        }
+    }
+}
+
+/// Extended READ/WRITE Command Mode-01 - Request Secure PIN Entry
+///
+/// Instruct the PD (reader) to perform a local Secure PIN Entry (SPE) sequence
+/// with the smart card. It also includes an APDU for the smart card.
+/// When the reader receives this packet, it autonomously prompts the user for
+/// their PIN, inserts the PIN into the APDU and sends it to the smart card.
+/// The reader should restore the display to its previous state when done
+/// processing the user input.
+/// While processing this message, the reader should not add any keys to the
+/// keypad buffer.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct OsdpCmdSecurePinData {
+    /// Reader number
+    pub reader: u8,
+    /// Timeout in seconds (0x00 means use default timeout)
+    pub timeout: u8,
+    /// Timeout in seconds after first key stroke
+    pub timeout2: u8,
+    /// Formatting USB_CCID_PIN_FORMAT_xxx
+    pub format_string: u8,
+    /// PIN block string
+    ///
+    /// Bits 3-0 - PIN block size in bytes after justification and formatting.
+    /// Bits 7-4 - Bit size of PIN length in APDU.
+    pub pin_block_string: u8,
+    /// Bit length format
+    ///
+    /// Bits 3-0 - PIN length position in system units
+    /// Bits 7-5 - Reserved for future use, bit 4 set if system units are bytes
+    ///            clear if system units are bits.
+    pub pin_len_format: u8,
+    /// PIN maximum extra digit
+    ///
+    /// XXYY, where XX is minimum PIN size in digits, YY is maximum.
+    pub pin_max_extra_digit: u16,
+    /// Conditions under which PIN entry should be considered complete
+    pub entry_validation_condition: u8,
+    /// Number of verification messages to display for PIN
+    pub number_message: u8,
+    /// Language for messages
+    pub language_id: u16,
+    /// Message index
+    pub msg_index: u8,
+    /// T=1 I-block prologue field to use (fill with 0x00)
+    pub teo_prologue: u32,
+    /// APDU data to send to the smart card
+    pub apdu: Vec<u8>,
+}
+
+impl From<libosdp_sys::osdp_xwr_secure_pin> for OsdpCmdSecurePinData {
+    fn from(value: libosdp_sys::osdp_xwr_secure_pin) -> Self {
+        let n = value.apdu_length as usize;
+        let apdu = value.apdu[0..n].to_vec();
+        Self {
+            reader: value.reader,
+            timeout: value.timeout,
+            timeout2: value.timeout2,
+            format_string: value.format_string,
+            pin_block_string: value.pin_block_string,
+            pin_len_format: value.pin_len_format,
+            pin_max_extra_digit: value.pin_max_extra_digit,
+            entry_validation_condition: value.entry_validation_condition,
+            number_message: value.number_message,
+            language_id: value.language_id,
+            msg_index: value.msg_index,
+            teo_prologue: value.teo_prologue,
+            apdu,
+        }
+    }
+}
+
+impl From<OsdpCmdSecurePinData> for libosdp_sys::osdp_xwr_secure_pin {
+    fn from(value: OsdpCmdSecurePinData) -> Self {
+        let mut apdu = [0; libosdp_sys::OSDP_CMD_XWR_APDU_MAX_LEN as usize];
+        apdu[..value.apdu.len()].copy_from_slice(&value.apdu[..]);
+        Self {
+            reader: value.reader,
+            timeout: value.timeout,
+            timeout2: value.timeout2,
+            format_string: value.format_string,
+            pin_block_string: value.pin_block_string,
+            pin_len_format: value.pin_len_format,
+            pin_max_extra_digit: value.pin_max_extra_digit,
+            entry_validation_condition: value.entry_validation_condition,
+            number_message: value.number_message,
+            language_id: value.language_id,
+            msg_index: value.msg_index,
+            teo_prologue: value.teo_prologue,
+            apdu_length: value.apdu.len() as u32,
+            apdu,
+        }
+    }
+}
+
+/// Extended write command types
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum OsdpCmdXWriteType {
+    /// Returns the current mode in effect.
+    GetMode,
+    /// En-/Disable the specified mode.
+    SetMode,
+    /// Pass the embedded APDU to the specified reader.
+    TransparentSend,
+    /// Instruct the designated reader to perform a smart card scan.
+    CardScan,
+    /// Notifies the designated reader to terminate its connection to the smart card.
+    CardDisconnect,
+    /// Instruct the designated reader to perform a "Secure PIN Entry".
+    SecurePin,
+}
+impl OsdpCmdXWriteType {
+    /// Convert extended write mode and command an enumerated type.
+    pub fn try_from_mode_and_command(mode: u8, command: u8) -> Option<Self> {
+        match (mode, command) {
+            (0, 1) => Some(Self::GetMode),
+            (0, 2) => Some(Self::SetMode),
+            (1, 1) => Some(Self::TransparentSend),
+            (1, 2) => Some(Self::CardDisconnect),
+            (1, 3) => Some(Self::SecurePin),
+            (1, 4) => Some(Self::CardScan),
+            (_, _) => None,
+        }
+    }
+
+    /// Get extended write mode and command from enumerated type.
+    pub fn to_mode_and_command(self) -> (u8, u8) {
+        match self {
+            Self::GetMode => (0, 1),
+            Self::SetMode => (0, 2),
+            Self::TransparentSend => (1, 1),
+            Self::CardDisconnect => (1, 2),
+            Self::SecurePin => (1, 3),
+            Self::CardScan => (1, 4),
+        }
+    }
+}
+
+impl From<&OsdpCommandXWrite> for OsdpCmdXWriteType {
+    fn from(value: &OsdpCommandXWrite) -> Self {
+        match value {
+            OsdpCommandXWrite::GetMode(_) => Self::GetMode,
+            OsdpCommandXWrite::SetMode(_) => Self::SetMode,
+            OsdpCommandXWrite::TransparentSend(_) => Self::TransparentSend,
+            OsdpCommandXWrite::CardScan(_) => Self::CardScan,
+            OsdpCommandXWrite::CardDisconnect(_) => Self::CardDisconnect,
+            OsdpCommandXWrite::SecurePin(_) => Self::SecurePin,
+        }
+    }
+}
+
+/// Command to facilitate communications with an ISO 7816-4 based credential.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum OsdpCommandXWrite {
+    /// Returns the current mode in effect.
+    GetMode(()),
+    /// En-/Disable the specified mode.
+    SetMode(OsdpCmdSetModeData),
+    /// Pass the embedded APDU to the specified reader.
+    TransparentSend(OsdpCmdTransparentSendData),
+    /// Instruct the designated reader to perform a smart card scan.
+    CardScan(OsdpCmdCardScanData),
+    /// Notifies the designated reader to terminate its connection to the smart card.
+    CardDisconnect(OsdpCmdCardDisconnectData),
+    /// Instruct the designated reader to perform a "Secure PIN Entry".
+    SecurePin(OsdpCmdSecurePinData),
+}
+
+impl From<OsdpCommandXWrite> for libosdp_sys::osdp_cmd_xwrite {
+    fn from(value: OsdpCommandXWrite) -> Self {
+        let (mode, command) = OsdpCmdXWriteType::from(&value).to_mode_and_command();
+        match value {
+            OsdpCommandXWrite::GetMode(_) => Self {
+                mode,
+                command,
+                __bindgen_anon_1: libosdp_sys::osdp_cmd_xwrite__bindgen_ty_1 {
+                    mode_set: OsdpCmdSetModeData::default().into(),
+                },
+            },
+            OsdpCommandXWrite::SetMode(c) => Self {
+                mode,
+                command,
+                __bindgen_anon_1: libosdp_sys::osdp_cmd_xwrite__bindgen_ty_1 {
+                    mode_set: c.clone().into(),
+                },
+            },
+            OsdpCommandXWrite::TransparentSend(c) => Self {
+                mode,
+                command,
+                __bindgen_anon_1: libosdp_sys::osdp_cmd_xwrite__bindgen_ty_1 {
+                    transp_send: c.clone().into(),
+                },
+            },
+            OsdpCommandXWrite::CardDisconnect(c) => Self {
+                mode,
+                command,
+                __bindgen_anon_1: libosdp_sys::osdp_cmd_xwrite__bindgen_ty_1 {
+                    sc_disco: c.clone().into(),
+                },
+            },
+            OsdpCommandXWrite::SecurePin(c) => Self {
+                mode,
+                command,
+                __bindgen_anon_1: libosdp_sys::osdp_cmd_xwrite__bindgen_ty_1 {
+                    secure_pin: c.clone().into(),
+                },
+            },
+            OsdpCommandXWrite::CardScan(c) => Self {
+                mode,
+                command,
+                __bindgen_anon_1: libosdp_sys::osdp_cmd_xwrite__bindgen_ty_1 {
+                    sc_scan: c.clone().into(),
+                },
+            },
+        }
+    }
+}
+
+impl TryFrom<libosdp_sys::osdp_cmd_xwrite> for OsdpCommandXWrite {
+    type Error = OsdpError;
+
+    fn try_from(value: libosdp_sys::osdp_cmd_xwrite) -> Result<Self> {
+        OsdpCmdXWriteType::try_from_mode_and_command(value.mode, value.command)
+            .map(|t| match t {
+                OsdpCmdXWriteType::GetMode => Self::GetMode(()),
+                OsdpCmdXWriteType::SetMode => {
+                    Self::SetMode(unsafe { value.__bindgen_anon_1.mode_set.into() })
+                }
+                OsdpCmdXWriteType::TransparentSend => {
+                    Self::TransparentSend(unsafe { value.__bindgen_anon_1.transp_send.into() })
+                }
+                OsdpCmdXWriteType::CardScan => {
+                    Self::CardScan(unsafe { value.__bindgen_anon_1.sc_scan.into() })
+                }
+                OsdpCmdXWriteType::CardDisconnect => {
+                    Self::CardDisconnect(unsafe { value.__bindgen_anon_1.sc_disco.into() })
+                }
+                OsdpCmdXWriteType::SecurePin => {
+                    Self::SecurePin(unsafe { value.__bindgen_anon_1.secure_pin.into() })
+                }
+            })
+            .ok_or(OsdpError::Parse(
+                "Unknown extended write mode and command combination".into(),
+            ))
+    }
+}
+
 /// CP interacts with and controls PDs by sending commands to it. The commands
 /// in this enum are specified by OSDP specification.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -523,6 +879,9 @@ pub enum OsdpCommand {
 
     /// Command to query status from the PD
     Status(OsdpStatusReport),
+
+    /// Command to facilitate communications with an ISO 7816-4 based credential
+    ExtendedWrite(OsdpCommandXWrite),
 }
 
 impl From<OsdpCommand> for libosdp_sys::osdp_cmd {
@@ -596,6 +955,12 @@ impl From<OsdpCommand> for libosdp_sys::osdp_cmd {
                 flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { status: c.into() },
             },
+            OsdpCommand::ExtendedWrite(c) => libosdp_sys::osdp_cmd {
+                _node: unsafe { core::mem::zeroed() },
+                id: libosdp_sys::osdp_cmd_e_OSDP_CMD_XWRITE,
+                flags: 0,
+                __bindgen_anon_1: libosdp_sys::osdp_cmd__bindgen_ty_1 { xwrite: c.into() },
+            },
         }
     }
 }
@@ -605,38 +970,42 @@ impl TryFrom<libosdp_sys::osdp_cmd> for OsdpCommand {
 
     fn try_from(value: libosdp_sys::osdp_cmd) -> Result<Self> {
         match value.id {
-            libosdp_sys::osdp_cmd_e_OSDP_CMD_LED => {
-                Ok(OsdpCommand::Led(unsafe { value.__bindgen_anon_1.led.into() }))
-            }
-            libosdp_sys::osdp_cmd_e_OSDP_CMD_BUZZER => {
-                Ok(OsdpCommand::Buzzer(unsafe { value.__bindgen_anon_1.buzzer.into() }))
-            }
-            libosdp_sys::osdp_cmd_e_OSDP_CMD_TEXT => {
-                Ok(OsdpCommand::Text(unsafe { value.__bindgen_anon_1.text.into() }))
-            }
-            libosdp_sys::osdp_cmd_e_OSDP_CMD_OUTPUT => {
-                Ok(OsdpCommand::Output(unsafe { value.__bindgen_anon_1.output.into() }))
-            }
-            libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET => {
-                Ok(OsdpCommand::ComSet(unsafe { value.__bindgen_anon_1.comset.into() }))
-            }
-            libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET_DONE => {
-                Ok(OsdpCommand::ComSetDone(unsafe { value.__bindgen_anon_1.comset.into() }))
-            }
-            libosdp_sys::osdp_cmd_e_OSDP_CMD_KEYSET => {
-                Ok(OsdpCommand::KeySet(unsafe { value.__bindgen_anon_1.keyset.into() }))
-            }
-            libosdp_sys::osdp_cmd_e_OSDP_CMD_MFG => {
-                Ok(OsdpCommand::Mfg(unsafe { value.__bindgen_anon_1.mfg.into() }))
-            }
-            libosdp_sys::osdp_cmd_e_OSDP_CMD_FILE_TX => {
-                Ok(OsdpCommand::FileTx(unsafe { value.__bindgen_anon_1.file_tx.into() }))
-            }
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_LED => Ok(OsdpCommand::Led(unsafe {
+                value.__bindgen_anon_1.led.into()
+            })),
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_BUZZER => Ok(OsdpCommand::Buzzer(unsafe {
+                value.__bindgen_anon_1.buzzer.into()
+            })),
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_TEXT => Ok(OsdpCommand::Text(unsafe {
+                value.__bindgen_anon_1.text.into()
+            })),
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_OUTPUT => Ok(OsdpCommand::Output(unsafe {
+                value.__bindgen_anon_1.output.into()
+            })),
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET => Ok(OsdpCommand::ComSet(unsafe {
+                value.__bindgen_anon_1.comset.into()
+            })),
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_COMSET_DONE => Ok(OsdpCommand::ComSetDone(unsafe {
+                value.__bindgen_anon_1.comset.into()
+            })),
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_KEYSET => Ok(OsdpCommand::KeySet(unsafe {
+                value.__bindgen_anon_1.keyset.into()
+            })),
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_MFG => Ok(OsdpCommand::Mfg(unsafe {
+                value.__bindgen_anon_1.mfg.into()
+            })),
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_FILE_TX => Ok(OsdpCommand::FileTx(unsafe {
+                value.__bindgen_anon_1.file_tx.into()
+            })),
             libosdp_sys::osdp_cmd_e_OSDP_CMD_STATUS => {
                 let data = unsafe { value.__bindgen_anon_1.status.try_into() }?;
                 Ok(OsdpCommand::Status(data))
             }
-            _ => Err(OsdpError::Parse("Unknown event".into())),
+            libosdp_sys::osdp_cmd_e_OSDP_CMD_XWRITE => {
+                let data = unsafe { value.__bindgen_anon_1.xwrite.try_into() }?;
+                Ok(OsdpCommand::ExtendedWrite(data))
+            }
+            _ => Err(OsdpError::Parse("Unknown command".into())),
         }
     }
 }

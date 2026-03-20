@@ -66,6 +66,9 @@ pub fn main(mut dev: PdConfig, daemonize: bool) -> Result<()> {
             OsdpCommand::Status(c) => {
                 log::info!("Command: {:?}", c);
             }
+            OsdpCommand::ExtendedWrite(c) => {
+                log::info!("Command: {:?}", c);
+            }
         }
         0
     });

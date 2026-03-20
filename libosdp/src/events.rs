@@ -331,6 +331,412 @@ impl From<OsdpStatusReport> for libosdp_sys::osdp_status_report {
     }
 }
 
+/// Extended write reply - Error
+///
+/// This may be sent as a poll response, or in response to any Mode -00
+/// command (osdp_XWR|XRD_MODE=0|XWR_PCMND=any) to return an error or
+/// negative acknowledge (NAK) condition.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct OsdpEventErrorData {
+    /// Error code
+    pub error_code: u8,
+}
+
+impl From<libosdp_sys::osdp_xrd_error_reply> for OsdpEventErrorData {
+    fn from(value: libosdp_sys::osdp_xrd_error_reply) -> Self {
+        Self {
+            error_code: value.error_code,
+        }
+    }
+}
+
+impl From<OsdpEventErrorData> for libosdp_sys::osdp_xrd_error_reply {
+    fn from(value: OsdpEventErrorData) -> Self {
+        Self {
+            error_code: value.error_code,
+        }
+    }
+}
+
+/// Extended write reply - Mode setting report
+///
+/// This is sent in response to osdp_XWR|XRD_MODE=0|XWR_PCMND=2
+/// and it returns its current background behavior mode setting
+/// and configuration in response to the request.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct OsdpEventModeReportData {
+    /// Extended write background operation mode in effect
+    pub mode_code: u8,
+    /// Mode configuration data
+    pub mode_config: u8,
+}
+
+impl From<libosdp_sys::osdp_xrd_mode_report> for OsdpEventModeReportData {
+    fn from(value: libosdp_sys::osdp_xrd_mode_report) -> Self {
+        Self {
+            mode_code: value.mode_code,
+            mode_config: value.mode_config,
+        }
+    }
+}
+
+impl From<OsdpEventModeReportData> for libosdp_sys::osdp_xrd_mode_report {
+    fn from(value: OsdpEventModeReportData) -> Self {
+        Self {
+            mode_code: value.mode_code,
+            mode_config: value.mode_config,
+        }
+    }
+}
+
+/// Extended write reply - Card information report
+///
+/// When enabled, this reply is sent in response to an osdp_POLL command
+/// after a smart card is detected that may require additional processing
+/// in an alternate mode.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct OsdpEventCardReportData {
+    /// Reader number
+    pub reader: u8,
+    /// Card protocol:
+    ///  - 0x00 - Contact T0/T1
+    ///  - 0x01 - ISO 14443 A/B
+    ///  - 0x02 - Reserved for future use
+    pub protocol: u8,
+    /// Card serial number
+    pub csn: Vec<u8>,
+    /// Protocol data:
+    ///  - Protocol 0: ATR
+    ///  - Protocol 1: ATS/ATQB
+    pub data: Vec<u8>,
+}
+
+impl From<libosdp_sys::osdp_xrd_card_report> for OsdpEventCardReportData {
+    fn from(value: libosdp_sys::osdp_xrd_card_report) -> Self {
+        let n = value.csn_length as usize;
+        let csn = value.csn[0..n].to_vec();
+        let n = value.length as usize;
+        let data = value.data[0..n].to_vec();
+        Self {
+            reader: value.reader,
+            protocol: value.protocol,
+            csn,
+            data,
+        }
+    }
+}
+
+impl From<OsdpEventCardReportData> for libosdp_sys::osdp_xrd_card_report {
+    fn from(value: OsdpEventCardReportData) -> Self {
+        let mut csn = [0; libosdp_sys::OSDP_EVENT_XRD_CSN_MAX_DATALEN as usize];
+        csn[..value.csn.len()].copy_from_slice(&value.csn[..]);
+        let mut data = [0; libosdp_sys::OSDP_EVENT_XRD_PROTOCOL_MAX_LEN as usize];
+        data[..value.data.len()].copy_from_slice(&value.data[..]);
+        Self {
+            reader: value.reader,
+            protocol: value.protocol,
+            csn_length: value.csn.len() as u8,
+            csn,
+            length: value.data.len() as u8,
+            data,
+        }
+    }
+}
+
+/// Extended write reply - Card present notification
+///
+/// This reply is sent in response to n osdp_PR01SCSCAN indicating the
+/// resulting smart card connection status or sent in response to an osdp_POLL.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct OsdpEventCardPresentData {
+    /// Reader number
+    pub reader: u8,
+    /// Smart Card Present Status:
+    ///  - 0x00 - Card not present.
+    ///  - 0x01 - Card present but interface not specified.
+    ///  - 0x02 - Card present on contactless interface.
+    ///  - 0x03 - Card present on contact interface.
+    ///  - 0x04 - Reserved for future use.
+    pub status: u8,
+}
+
+impl From<libosdp_sys::osdp_xrd_card_present> for OsdpEventCardPresentData {
+    fn from(value: libosdp_sys::osdp_xrd_card_present) -> Self {
+        Self {
+            reader: value.reader,
+            status: value.status,
+        }
+    }
+}
+
+impl From<OsdpEventCardPresentData> for libosdp_sys::osdp_xrd_card_present {
+    fn from(value: OsdpEventCardPresentData) -> Self {
+        Self {
+            reader: value.reader,
+            status: value.status,
+        }
+    }
+}
+
+/// Extended write reply - Transparent card data
+///
+/// This reply is sent in response to a XWR_PCMND Code 0x01 “XMIT” reporting
+/// a data packet received from a smart card by a reader set to operate in
+/// background Mode = 1.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct OsdpEventTransparentCardData {
+    /// Reader number
+    pub reader: u8,
+    /// Results of requested command
+    pub status: u8,
+    /// APDU data from the smart card
+    pub apdu: Vec<u8>,
+}
+
+impl From<libosdp_sys::osdp_xrd_card_data> for OsdpEventTransparentCardData {
+    fn from(value: libosdp_sys::osdp_xrd_card_data) -> Self {
+        let n = value.apdu_length as usize;
+        let apdu = value.apdu[0..n].to_vec();
+        Self {
+            reader: value.reader,
+            status: value.status,
+            apdu,
+        }
+    }
+}
+
+impl From<OsdpEventTransparentCardData> for libosdp_sys::osdp_xrd_card_data {
+    fn from(value: OsdpEventTransparentCardData) -> Self {
+        let mut apdu = [0; libosdp_sys::OSDP_EVENT_XRD_APDU_MAX_DATALEN as usize];
+        apdu[..value.apdu.len()].copy_from_slice(&value.apdu[..]);
+        Self {
+            reader: value.reader,
+            status: value.status,
+            apdu_length: value.apdu.len() as u8,
+            apdu,
+        }
+    }
+}
+
+/// Extended write reply - Secure PIN entry complete
+///
+/// This reply is sent in response to an XWR_PCMND Code 0x03 “Secure PIN Entry”
+/// indicating that a Secure Pin Entry (SPE) sequence has completed.
+/// This reply is used by smart card readers set to operate in background
+/// Mode = 1.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct OsdpEventPinCompleteData {
+    /// Reader number
+    pub reader: u8,
+    /// Results of the SPE sequence
+    pub status: u8,
+    /// Number of attempts before card "locks" itself
+    pub tries: u8,
+}
+
+impl From<libosdp_sys::osdp_xrd_pin_complete> for OsdpEventPinCompleteData {
+    fn from(value: libosdp_sys::osdp_xrd_pin_complete) -> Self {
+        Self {
+            reader: value.reader,
+            status: value.status,
+            tries: value.tries,
+        }
+    }
+}
+
+impl From<OsdpEventPinCompleteData> for libosdp_sys::osdp_xrd_pin_complete {
+    fn from(value: OsdpEventPinCompleteData) -> Self {
+        Self {
+            reader: value.reader,
+            status: value.status,
+            tries: value.tries,
+        }
+    }
+}
+
+
+/// Extended read event types
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum OsdpEventXReadType {
+    /// General error indication: PD was unable to process the command.
+    Error,
+    /// The current extended write mode in effect.
+    ModeReport,
+    /// A card information report of a detected smart card.
+    CardReport,
+    /// Card present notification.
+    CardPresent,
+    /// Transparent card data.
+    CardData,
+    /// Secure PIN entry complete.
+    PinComplete,
+}
+impl OsdpEventXReadType {
+    /// Convert extended write mode and reply code to an enumerated type.
+    pub fn try_from_mode_and_reply(mode: u8, reply: u8) -> Option<Self> {
+        match (mode, reply) {
+            (_, 0) => Some(Self::Error),
+            (0, 1) => Some(Self::ModeReport),
+            (0, 2) => Some(Self::CardReport),
+            (1, 1) => Some(Self::CardPresent),
+            (1, 2) => Some(Self::CardData),
+            (1, 3) => Some(Self::PinComplete),
+            (_, _) => None,
+        }
+    }
+
+    /// Get extended write mode and reply code from enumerated type.
+    pub fn to_mode_and_reply(self) -> (u8, u8) {
+        match self {
+            Self::Error => (0, 0),
+            Self::ModeReport => (0, 1),
+            Self::CardReport => (0, 2),
+            Self::CardPresent => (1, 1),
+            Self::CardData => (1, 2),
+            Self::PinComplete => (1, 3),
+        }
+    }
+}
+
+impl From<&OsdpEventXRead> for OsdpEventXReadType {
+    fn from(value: &OsdpEventXRead) -> Self {
+        match value {
+            OsdpEventXRead::Error(_) => Self::Error,
+            OsdpEventXRead::ModeReport(_) => Self::ModeReport,
+            OsdpEventXRead::CardReport(_) => Self::CardReport,
+            OsdpEventXRead::CardPresent(_) => Self::CardPresent,
+            OsdpEventXRead::CardData(_) => Self::CardData,
+            OsdpEventXRead::PinComplete(_) => Self::PinComplete,
+        }
+    }
+}
+
+impl From<OsdpEventXRead> for libosdp_sys::osdp_event_xread {
+    fn from(value: OsdpEventXRead) -> Self {
+        let (mode, reply) = OsdpEventXReadType::from(&value).to_mode_and_reply();
+        match value {
+            OsdpEventXRead::Error(c) => {
+                Self {
+                    mode,
+                    reply,
+                    __bindgen_anon_1: libosdp_sys::osdp_event_xread__bindgen_ty_1 {
+                        error_reply: c.clone().into(),
+                    },
+                }
+            },
+            OsdpEventXRead::ModeReport(c) => {
+                Self {
+                    mode,
+                    reply,
+                    __bindgen_anon_1: libosdp_sys::osdp_event_xread__bindgen_ty_1 {
+                        mode_report: c.clone().into(),
+                    },
+                }
+            },
+            OsdpEventXRead::CardReport(c) => {
+                Self {
+                    mode,
+                    reply,
+                    __bindgen_anon_1: libosdp_sys::osdp_event_xread__bindgen_ty_1 {
+                        card_report: c.clone().into(),
+                    },
+                }
+            },
+            OsdpEventXRead::CardPresent(c) => {
+                Self {
+                    mode,
+                    reply,
+                    __bindgen_anon_1: libosdp_sys::osdp_event_xread__bindgen_ty_1 {
+                        card_present: c.clone().into(),
+                    },
+                }
+            },
+            OsdpEventXRead::CardData(c) => {
+                Self {
+                    mode,
+                    reply,
+                    __bindgen_anon_1: libosdp_sys::osdp_event_xread__bindgen_ty_1 {
+                        card_data: c.clone().into(),
+                    },
+                }
+            },
+            OsdpEventXRead::PinComplete(c) => {
+                Self {
+                    mode,
+                    reply,
+                    __bindgen_anon_1: libosdp_sys::osdp_event_xread__bindgen_ty_1 {
+                        pin_complete: c.clone().into(),
+                    },
+                }
+            },
+        }
+    }
+}
+
+impl TryFrom<libosdp_sys::osdp_event_xread> for OsdpEventXRead {
+    type Error = OsdpError;
+
+    fn try_from(value: libosdp_sys::osdp_event_xread) -> Result<Self> {
+        OsdpEventXReadType::try_from_mode_and_reply(value.mode, value.reply)
+            .map(|t| {
+                match t {
+                    OsdpEventXReadType::Error => {
+                        Self::Error(unsafe { value.__bindgen_anon_1.error_reply.into() })
+                    },
+                    OsdpEventXReadType::ModeReport => {
+                        Self::ModeReport(unsafe { value.__bindgen_anon_1.mode_report.into() })
+                    },
+                    OsdpEventXReadType::CardReport => {
+                        Self::CardReport(unsafe { value.__bindgen_anon_1.card_report.into() })
+                    },
+                    OsdpEventXReadType::CardPresent => {
+                        Self::CardPresent(unsafe { value.__bindgen_anon_1.card_present.into() })
+                    },
+                    OsdpEventXReadType::CardData => {
+                        Self::CardData(unsafe { value.__bindgen_anon_1.card_data.into() })
+                    },
+                    OsdpEventXReadType::PinComplete => {
+                        Self::PinComplete(unsafe { value.__bindgen_anon_1.pin_complete.into() })
+                    },
+                }
+            })
+            .ok_or(OsdpError::Parse(
+                "Unknown extended write mode and reply combination".into(),
+            ))
+    }
+}
+
+
+/// Event to describe an extended write command response.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum OsdpEventXRead {
+    /// General error indication: PD was unable to process the command.
+    Error(OsdpEventErrorData),
+    /// The current extended write mode in effect.
+    ModeReport(OsdpEventModeReportData),
+    /// A card information report of a detected smart card.
+    CardReport(OsdpEventCardReportData),
+    /// Card present notification.
+    CardPresent(OsdpEventCardPresentData),
+    /// Transparent card data.
+    CardData(OsdpEventTransparentCardData),
+    /// Secure PIN entry complete.
+    PinComplete(OsdpEventPinCompleteData),
+}
+
+
 /// CP to intimate it about various events that originate there (such as key
 /// press, card reads, etc.,). They do this by creating an “event” and sending
 /// it to the CP. This module is responsible to handling such events though
@@ -349,6 +755,9 @@ pub enum OsdpEvent {
 
     /// Event to describe a input/output/tamper/power status change
     Status(OsdpStatusReport),
+
+    /// Event to describe an extended write command response
+    ExtendedRead(OsdpEventXRead),
 }
 
 impl From<OsdpEvent> for libosdp_sys::osdp_event {
@@ -384,6 +793,12 @@ impl From<OsdpEvent> for libosdp_sys::osdp_event {
                 flags: 0,
                 __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 { status: e.into() },
             },
+            OsdpEvent::ExtendedRead(e) => libosdp_sys::osdp_event {
+                _node: unsafe { core::mem::zeroed() },
+                type_: libosdp_sys::osdp_event_type_OSDP_EVENT_XREAD,
+                flags: 0,
+                __bindgen_anon_1: libosdp_sys::osdp_event__bindgen_ty_1 { xread: e.into() },
+            }
         }
     }
 }
